@@ -4,15 +4,17 @@ from pyowm import OWM
 from pyowm.utils.config import get_default_config
 import os
 import pyttsx3
-from winotify import Notification
-
 
 class Assistent():
     def __init__(self):
+        if os.name == "nt":
+            self.is_windows = True
+            from winotify import Notification
+        else:
+            self.is_windows = False
         self.root = sr.Recognizer()
         self.root.pause_threshold = 0.5
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print("λ ~ Здравствуйте")
+        self.clear()
         self.engine = pyttsx3.init()
         rate = self.engine.getProperty('rate')
         self.engine.setProperty('rate', rate-5)
@@ -51,6 +53,13 @@ class Assistent():
     def hadler_main(self):
         pass
 
+    def clear(self):
+        if os.name == 'nt':
+            os.system('cls')
+        else:
+            os.system('clear')
+        
+
     def run(self):
         while True:
             try:
@@ -81,8 +90,8 @@ class Search_Browser():
         print("Готово")
 
     def search_youtube(self):
-        print("Произвожу поиск в Yandex... открываю браузер")
-        webbrowser.open_new(url=self.yandex + self.text_search)
+        print("Произвожу поиск в Youtube... открываю браузер")
+        webbrowser.open_new(url=self.youtube + self.text_search)
         print("Готово")
 
     def input_search(self, platform):
@@ -141,27 +150,18 @@ class Search_Weather():
         config_dict['language'] = 'ru'
         self.owm = OWM('1f7d88e16e1906ce2a0ce4be53b020de', config=config_dict)
         self.manager = self.owm.weather_manager()
-        self.city = city
-        self.get_weather_city(self.city)
+        if os.name == 'nt':
+            self.get_weather_city_windows(city)
+        else:
+            self.get_weather_city_linux(city)
 
         self.root = sr.Recognizer()
         self.root.pause_threshold = 0.5
 
-    def get_weather_param(self, we):
-        self.t = we.temperature("celsius")
-        self.t1 = self.t['temp'] # ~ температура
-        self.t2 = self.t['feels_like'] # ~ ощущения
-        self.t3 = self.t['temp_max'] # ~ максимальная температура
-        self.t4 = self.t['temp_min'] # ~ минимальная температура
-        self.wi = we.wind()['speed'] # ~ скорость ветра
-        self.humi = we.humidity # ~ влажность
-        self.cl = we.clouds # ~ облачность
-        self.st = we.status # ~ статус погоды
-        self.dt = we.detailed_status # ~ детальная погода
-        self.pr = we.pressure['press'] # ~ давление
-        self.vd = we.visibility_distance # ~ видимость
+    def get_weather_city_linux(seld, city):
+        pass
 
-    def get_weather_city(self, city):
+    def get_weather_city_windows(self, city):
         self.icon_on = os.getcwd()+'files/cloud-on.png'
         self.icon_off = os.getcwd()+'files/cloud-off.png'
         self.engine = pyttsx3.init()
@@ -181,6 +181,21 @@ class Search_Weather():
             self.toaster.show()
             self.engine.say("Погода не найдена")
             self.engine.runAndWait()
+        
+    def get_weather_param(self, we):
+        self.t = we.temperature("celsius")
+        self.t1 = self.t['temp'] # ~ температура
+        self.t2 = self.t['feels_like'] # ~ ощущения
+        self.t3 = self.t['temp_max'] # ~ максимальная температура
+        self.t4 = self.t['temp_min'] # ~ минимальная температура
+        self.wi = we.wind()['speed'] # ~ скорость ветра
+        self.humi = we.humidity # ~ влажность
+        self.cl = we.clouds # ~ облачность
+        self.st = we.status # ~ статус погоды
+        self.dt = we.detailed_status # ~ детальная погода
+        self.pr = we.pressure['press'] # ~ давление
+        self.vd = we.visibility_distance # ~ видимость
+
 
 class OpenProgram():
     def __init__(self):

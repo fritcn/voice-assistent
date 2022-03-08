@@ -182,6 +182,10 @@ class Search_Weather():
             self.engine.say("Погода не найдена")
             self.engine.runAndWait()
 
+class OpenProgram():
+    def __init__(self):
+        pass
+
 
 
 if __name__ == '__main__':

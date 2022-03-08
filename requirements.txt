@@ -1,0 +1,5 @@
+PyAudio==0.2.11
+pyttsx3==2.90
+SpeechRecognition==3.8.1
+winotify==1.1.0
+pyowm==3.3.0

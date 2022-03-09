@@ -5,6 +5,7 @@ from pyowm.utils.config import get_default_config
 import os
 import pyttsx3
 
+
 class Assistent():
     def __init__(self):
         if os.name == "nt":
@@ -144,6 +145,7 @@ class Search_Browser():
         self.input_platform()
 
 
+
 class Search_Weather():
     def __init__(self, city="суходол"):
         config_dict = get_default_config()
@@ -158,7 +160,7 @@ class Search_Weather():
         self.root = sr.Recognizer()
         self.root.pause_threshold = 0.5
 
-    def get_weather_city_linux(seld, city):
+    def get_weather_city_linux(self, city):
         pass
 
     def get_weather_city_windows(self, city):
@@ -197,10 +199,42 @@ class Search_Weather():
         self.vd = we.visibility_distance # ~ видимость
 
 
+
 class OpenProgram():
     def __init__(self):
         pass
 
+
+
+class NewFilms():
+    def __init__(self, param):
+        # param --> [ film, serial, mults ]
+        self.parametr = param
+        self.engine = pyttsx3.init()
+        self.engine.runAndWait()
+        self.url_films = ''
+        self.url_serial = ''
+        self.url_mults = ''
+        match self.parametr:
+            case 'mults':
+                self.engine('Открываю новинки мультфильмов')
+                self.open_mults()
+            case 'serial':
+                self.engine('Открываю новинки сериалов')
+                self.open_serials()
+            case 'films':
+                self.engine('Открываю новинки фильмов')
+                self.open_films()
+            
+
+    def open_films(self):
+        webbrowser.open(self.url_films)
+
+    def open_serials(self):
+        webbrowser.open(self.url_serial)
+
+    def open_mults(self):
+        webbrowser.open(self.url_mults)
 
 
 if __name__ == '__main__':

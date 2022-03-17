@@ -4,81 +4,71 @@ from pyowm import OWM
 from pyowm.utils.config import get_default_config
 import os
 import pyttsx3
+from datetime import datetime
 
-
-class Assistent():
+class Recognition():
     def __init__(self):
-        if os.name == "nt":
-            self.is_windows = True
-            from winotify import Notification
-        else:
-            self.is_windows = False
         self.root = sr.Recognizer()
         self.root.pause_threshold = 0.5
-        self.clear()
         self.engine = pyttsx3.init()
         rate = self.engine.getProperty('rate')
         self.engine.setProperty('rate', rate-5)
         self.engine.runAndWait()
-
-    def command_runner(self):
-        with sr.Microphone() as self.mic:
-            self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
-            self.audio = self.root.listen(source=self.mic)
-            text = self.root.recognize_google(audio_data=self.audio, language='ru-RU').lower()
-            text_new = text.replace(" точка", ".")
-            self.text_end = text_new.replace(" запятая", ",")
-
-            if self.text_end == "выключение" or self.text_end == "выключись":
-                self.engine.say("Выключаюсь")
-                self.engine.runAndWait()
-                print(f"\nλ ~ Выключаюсь")
-                exit()
-
-            elif "погода" in self.text_end:
-                if self.text_end == "погода":
-                    print(f"\nλ ~ Погода Суходол")
-                    Search_Weather()
-                else:
-                    self.city = text.rsplit()[1]
-                    print(f"\nλ ~ Погода {self.city.capitalize()}")
-                    Search_Weather(city=self.city)
-                
-            elif "поиск в интернете" in self.text_end:
-                print('\nλ ~ Поиск в интернете...')
-                Search_Browser()
-
-            else:
-                pass
-
-    def hadler_main(self):
-        pass
-
+    
     def clear(self):
         if os.name == 'nt':
             os.system('cls')
         else:
             os.system('clear')
-        
 
-    def run(self):
+class Assistent(Recognition):
+    def __init__(self):
+        super(Assistent, self).__init__()
+        self.is_windows = False
+        if os.name == "nt":
+            self.is_windows = True
+            from winotify import Notification
+        self.command_runner()
+
+    def command_runner(self):
         while True:
             try:
-                self.command_runner()
-            except sr.UnknownValueError:
+                with sr.Microphone() as self.mic:
+                    self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
+                    self.audio = self.root.listen(source=self.mic)
+                    text = self.root.recognize_google(audio_data=self.audio, language='ru-RU').lower()
+                    text_new = text.replace(" точка", ".")
+                    self.text_end = text_new.replace(" запятая", ",")
+
+                    if self.text_end == "выключение" or self.text_end == "выключись":
+                        self.engine.say("Выключаюсь")
+                        self.engine.runAndWait()
+                        print(f"\nλ ~ Выключаюсь")
+                        exit()
+
+                    elif "погода" in self.text_end:
+                        if self.text_end == "погода":
+                            print(f"\nλ ~ Погода Суходол")
+                            Search_Weather()
+                        else:
+                            self.city = text.rsplit()[1]
+                            print(f"\nλ ~ Погода {self.city.capitalize()}")
+                            Search_Weather(city=self.city)
+                        
+                    elif "поиск в интернете" in self.text_end:
+                        print('\nλ ~ Поиск в браузере')
+                        Search_Browser()
+            except:
                 pass
 
 
-
-
-class Search_Browser():
+class Search_Browser(Recognition):
     def __init__(self):
-        self.root = sr.Recognizer()
-        self.root.pause_threshold = 0.5
+        super(Search_Browser, self).__init__() 
         self.yandex = "https://yandex.ru/search/?text="
         self.youtube = "https://youtube.com/results?search_query="
         self.google = "https://google.ru/search?q="
-        self.run()
+        self.input_platform()
 
     def search_google(self):
         print("Произвожу поиск в Google... открываю браузер")
@@ -131,7 +121,6 @@ class Search_Browser():
                     if self.platform in ["google", "yandex", "youtube", "гугл", "яндекс", "ютуб"]:
                         self.input_search(self.platform)
                         break
-
                 except sr.UnknownValueError:
                     if count == 3:
                         count = 0
@@ -139,34 +128,38 @@ class Search_Browser():
                     else:
                         count += 1
 
-            
 
-    def run(self):
-        self.input_platform()
-
-
-
-class Search_Weather():
+class Search_Weather(Recognition):
     def __init__(self, city="суходол"):
+        super(Search_Weather, self).__init__()
         config_dict = get_default_config()
         config_dict['language'] = 'ru'
         self.owm = OWM('1f7d88e16e1906ce2a0ce4be53b020de', config=config_dict)
         self.manager = self.owm.weather_manager()
+        self.root = sr.Recognizer()
+        self.root.pause_threshold = 0.5
+        self.now = datetime.now()
         if os.name == 'nt':
             self.get_weather_city_windows(city)
         else:
             self.get_weather_city_linux(city)
 
-        self.root = sr.Recognizer()
-        self.root.pause_threshold = 0.5
-
     def get_weather_city_linux(self, city):
-        pass
+        try:
+            self.weather_all = self.manager.weather_at_place(city).weather
+            self.get_weather_param(self.weather_all)
+            self.title = f'Погода {city.capitalize()}'
+            self.message_notif = f"Температура ~ {self.t1} °C\nОщущения ~ {self.t2} °C\nСкорость ветра ~ {self.wi} м/c\nПогода ~ {self.dt}\nВлажность ~ {self.humi}%"
+            print("-"*60, f"\n{self.title}\nТекущее время ~ {self.now.hour}:{self.now.minute}\n{self.message_notif}\n", "-"*60)
+        except:
+            self.msg_error = "Погода не найдена, повторите запрос."
+            print("-"*60, f"\n{self.msg_error}\n", "-"*60)
+            self.engine.say("Погода не найдена")
+            self.engine.runAndWait()
 
     def get_weather_city_windows(self, city):
         self.icon_on = os.getcwd()+'files/cloud-on.png'
         self.icon_off = os.getcwd()+'files/cloud-off.png'
-        self.engine = pyttsx3.init()
         try:
             self.weather_all = self.manager.weather_at_place(city).weather
             self.get_weather_param(self.weather_all)
@@ -215,16 +208,15 @@ class NewFilms():
         self.url_films = ''
         self.url_serial = ''
         self.url_mults = ''
-        match self.parametr:
-            case 'mults':
-                self.engine('Открываю новинки мультфильмов')
-                self.open_mults()
-            case 'serial':
-                self.engine('Открываю новинки сериалов')
-                self.open_serials()
-            case 'films':
-                self.engine('Открываю новинки фильмов')
-                self.open_films()
+        if self.parametr == "mults":
+            self.engine('Открываю новинки мультфильмов')
+            self.open_mults()
+        elif self.parametr == 'serial':
+            self.engine('Открываю новинки сериалов')
+            self.open_serials()
+        elif self.parametr == 'films':
+            self.engine('Открываю новинки фильмов')
+            self.open_films()
             
 
     def open_films(self):

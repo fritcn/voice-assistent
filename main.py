@@ -6,6 +6,7 @@ from pyowm.utils.config import get_default_config
 import os
 import pyttsx3
 from datetime import datetime
+import keyboard
 if os.name == 'nt':
     from winotify import Notification
 
@@ -16,7 +17,7 @@ class Recognition():
         self.root.pause_threshold = 0.5
         self.engine = pyttsx3.init()
         rate = self.engine.getProperty('rate')
-        self.engine.setProperty('rate', rate-5)
+        self.engine.setProperty('rate', rate-20)
         self.engine.runAndWait()
         if os.name == 'nt':
             self.is_windows = True
@@ -31,6 +32,8 @@ class Recognition():
 class Assistent(Recognition):
     def __init__(self):
         super(Assistent, self).__init__()
+        self.engine.say("Cлушаю")
+        self.engine.runAndWait()
         self.clear()
         self.commands = {
             "выключись": "Stop",
@@ -40,6 +43,7 @@ class Assistent(Recognition):
             "поиск в интернете": "Search_Browser",
             "погода": "Search_Weather",
         }
+        
         self.commands_list = self.commands.keys()
         self.command_runner()
 
@@ -55,18 +59,14 @@ class Assistent(Recognition):
                         self.handler(self.text)
                     elif "погода" in self.text:
                         self.handler(self.text, is_weather=True)
+                    elif "поиск" in self.text:
+                        self.handler(self.text, is_search=True)
+                break
             except:
                 pass
 
-    def handler(self, message, is_weather=False):
-        if not is_weather:
-            print("λ ~ ", message)
-            try:
-                self.item = self.commands.get(message)
-                globals()[self.item]()
-            except:
-                os.abort()
-        else:
+    def handler(self, message, is_weather=False, is_search=False):
+        if is_weather:
             if " в " in message:
                 checker = MorphAnalyzer()
                 spliting = message.split(" в ")
@@ -85,20 +85,51 @@ class Assistent(Recognition):
                 self.item = self.commands.get(spliting[0])
                 globals()[self.item](self.city)
 
+        elif is_search:
+            if " в " in message:
+                checker = MorphAnalyzer()
+                spliting = message.split(" в ")
+                word = checker.parse(spliting[1])[0]
+                self.platform = word.normal_form
+                print(f"λ ~ поиск {self.platform}")
+                self.engine.say(f"поиск {self.platform}")
+                self.item = self.commands.get(spliting[0])
+                globals()[self.item](self.platform)
+
+            else:
+                spliting = message.split(" ")
+                self.platform = spliting[1]
+                print(f"λ ~ поиск {self.platform}")
+                self.engine.say(f"поиск {self.platform}")
+                self.item = self.commands.get(spliting[0])
+                globals()[self.item](self.platform)
+
+        else:
+            print("λ ~ ", message)
+            try:
+                self.item = self.commands.get(message)
+                globals()[self.item]()
+            except:
+                os.abort()
+
 
 class Stop():
     def __init__(self):
-        print("Good bye...")
+        print("Сам закройся...")
         os.abort()
 
 
 class Search_Browser(Recognition):
-    def __init__(self):
+    def __init__(self, platform=None):
         super(Search_Browser, self).__init__()
         self.yandex = "https://yandex.ru/search/?text="
         self.youtube = "https://youtube.com/results?search_query="
         self.google = "https://google.ru/search?q="
-        self.input_platform()
+        if platform == None:
+            self.input_platform()
+        else:
+            self.platform = platform
+            self.input_search(self.platform)
 
     def search_google(self):
         print(
@@ -250,4 +281,5 @@ class NewFilms():
 
 
 if __name__ == '__main__':
-    main = Assistent()
+    keyboard.add_hotkey("Ctrl+Shift+F", Assistent)
+    keyboard.wait()

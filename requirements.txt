@@ -4,3 +4,4 @@ SpeechRecognition==3.8.1
 winotify==1.1.0
 pyowm==3.3.0
 pymorphy2==0.9.1
+prettytable==3.2.0

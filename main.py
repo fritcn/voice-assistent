@@ -1,4 +1,6 @@
+from time import sleep
 from pymorphy2 import MorphAnalyzer
+from prettytable import PrettyTable
 import speech_recognition as sr
 import webbrowser
 from pyowm import OWM
@@ -7,6 +9,7 @@ import os
 import pyttsx3
 from datetime import datetime
 import keyboard
+import winapps
 if os.name == 'nt':
     from winotify import Notification
 
@@ -42,6 +45,11 @@ class Assistent(Recognition):
             "поиск": "Search_Browser",
             "поиск в интернете": "Search_Browser",
             "погода": "Search_Weather",
+            "помощь": "Help",
+            "просвяти": "Help",
+            "объясни": "Help",
+            "покажи": "Help",
+            "музыка": "Music"
         }
         
         self.commands_list = self.commands.keys()
@@ -110,6 +118,7 @@ class Assistent(Recognition):
                 self.item = self.commands.get(message)
                 globals()[self.item]()
             except:
+                print("Неудача")
                 os.abort()
 
 
@@ -154,7 +163,6 @@ class Search_Browser(Recognition):
                 try:
                     self.text_search = self.root.recognize_google(
                         audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
-
                     if platform == ("google" or "гугл"):
                         self.search_google()
                     elif platform == ("яндекс" or "yandex"):
@@ -171,8 +179,7 @@ class Search_Browser(Recognition):
             print("Где искать?(google, youtube, yandex)")
             while True:
                 try:
-                    self.platform = self.root.recognize_google(
-                        audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
+                    self.platform = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
                     if self.platform in ["google", "yandex", "youtube", "гугл", "яндекс", "ютуб"]:
                         self.input_search(self.platform)
                         break
@@ -190,7 +197,7 @@ class Search_Weather(Recognition):
         self.root = sr.Recognizer()
         self.root.pause_threshold = 0.5
         self.now = datetime.now()
-        if os.name == 'nt':
+        if self.is_windows:
             self.get_weather_city_windows(city)
         else:
             self.get_weather_city_linux(city)
@@ -210,8 +217,8 @@ class Search_Weather(Recognition):
             self.engine.runAndWait()
 
     def get_weather_city_windows(self, city):
-        self.icon_on = os.getcwd()+'files/cloud-on.png'
-        self.icon_off = os.getcwd()+'files/cloud-off.png'
+        self.icon_on = os.getcwd()+'icons/cloud-on.png'
+        self.icon_off = os.getcwd()+'icons/cloud-off.png'
         try:
             self.weather_all = self.manager.weather_at_place(city).weather
             self.get_weather_param(self.weather_all)
@@ -251,33 +258,106 @@ class OpenProgram():
         pass
 
 
-class NewFilms():
-    def __init__(self, param):
-        # param --> [ film, serial, mults ]
-        self.parametr = param
-        self.engine = pyttsx3.init()
+class Help(Recognition):
+    def __init__(self):
+        super(Help, self).__init__()
+        self.clear()
+        self.engine.say("Что непонятного в моих командах?")
         self.engine.runAndWait()
-        self.url_films = ''
-        self.url_serial = ''
-        self.url_mults = ''
-        if self.parametr == "mults":
-            self.engine('Открываю новинки мультфильмов')
-            self.open_mults()
-        elif self.parametr == 'serial':
-            self.engine('Открываю новинки сериалов')
-            self.open_serials()
-        elif self.parametr == 'films':
-            self.engine('Открываю новинки фильмов')
-            self.open_films()
+        self.title = "λ ~ Список команд"
+        print(self.title)
+        print(self.constructor())
+            
+    def constructor(self):
+        self.tabl = PrettyTable()
+        self.tabl.field_names = ["\033[32mКоманда\033[0m", "\033[32mОписание\033[0m"]
+        self.tabl.add_row(["Выключение", "\033[31mВыключение программы\033[0m"])
+        self.tabl.add_row(["Закройся", "\033[31mВыключение программы\033[0m"])
+        self.tabl.add_row(["Выключись", "\033[31mВыключение программы\033[0m"])
+        self.tabl.add_row(["Поиск {...}", "\033[31mПоиск в интернете\033[0m"])
+        self.tabl.add_row(["Погода {...}", "\033[31mПоиск погоды\033[0m"])
+        self.tabl.add_row(["Помощь", "\033[31mПомощь в работе\033[0m"])
+        self.tabl.add_row(["Просвяти", "\033[31mПомощь в работе\033[0m"])
+        self.tabl.add_row(["Объясни", "\033[31mПомощь в работе\033[0m"])
+        self.tabl.add_row(["Покажи", "\033[31mПомощь в работе\033[0m"])
+        self.tabl.add_row(["Музыка", "\033[31mОткрыть музыку\033[0m"])
+        return self.tabl
 
-    def open_films(self):
-        webbrowser.open(self.url_films)
 
-    def open_serials(self):
-        webbrowser.open(self.url_serial)
+class Music(Recognition):
+    def __init__(self):
+        super(Music, self).__init__()
+        self.clear()
+        self.sites = {
+            "vk": "https://vk.com/audio",
+            "вк": "https://vk.com/audio",
+            "spotify": "https://open.spotify.com",
+            "спотифай": "https://open.spotify.com",
+        }
+        print("λ ~ Включение музыки")
+        self.path_to_spotify = f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming\\Spotify\\Spotify.exe"
+        self.path_to_vk = f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming\\VK\\vk.exe"
+        self.check_programs()
+        if (self.spotify_en == True) and (self.vk_en == True):
+            self.two_programs()
+        elif self.spotify_en == True:
+            self.open_spotify()
+        elif self.vk_en == True:
+            self.open_vk_music()
+        else:
+            self.open_sites()
 
-    def open_mults(self):
-        webbrowser.open(self.url_mults)
+    def open_spotify(self):
+        self.engine.say("открываю спотифай")
+        self.engine.runAndWait()
+        os.system(f"start {self.path_to_spotify}")
+        
+    def open_vk_music(self):
+        self.engine.say("открываю вконтакте музыка")
+        self.engine.runAndWait()
+        os.system(f"start {self.path_to_vk}")
+
+    def two_programs(self):
+        with sr.Microphone() as self.mic:
+            self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
+            print("Какую программу открыть? <vk, spotify>")
+            while True:
+                try:
+                    self.choice_prog = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
+                    if (self.choice_prog == "вк") or (self.choice_prog == "vk"):
+                        self.open_vk_music()
+                    else:
+                        self.open_spotify()
+                except:
+                    pass
+
+    def open_sites(self):
+        with sr.Microphone() as self.mic:
+            self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
+            print("Какой сайт открыть? <vk, spotify>")
+            while True:
+                try:
+                    self.name = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
+                    if self.name in self.sites.keys():
+                        print(f"λ ~ Открываю сайт <{self.name.capitilize()}>")
+                        webbrowser.open(self.sites[self.name])
+                except:
+                    pass
+
+    def check_programs(self):
+        print(">>> Начинаю поиск программ...")
+        for i in os.listdir(f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming"):
+            if "Spotify" in i:
+                self.spotify_en = True
+                print(">>> \033[32mНайдена программа Spotify\033[0m")
+            elif "VK" in i:
+                self.vk_en = True
+        if self.vk_en == True:
+            print(">>> \033[32mНайдена программа Vk\033[0m")
+        if self.spotify_en == False and self.vk_en == False:
+            print(">>> \033[31m Не найдено программ для включения музыки\033[0m")
+        print()
+
 
 
 if __name__ == '__main__':

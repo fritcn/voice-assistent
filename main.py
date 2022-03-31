@@ -49,6 +49,7 @@ class Assistent(Recognition):
             "просвяти": "Help",
             "объясни": "Help",
             "покажи": "Help",
+            "сос": "Help",
             "музыка": "Music"
         }
         
@@ -274,13 +275,14 @@ class Help(Recognition):
         self.tabl.add_row(["Выключение", "\033[31mВыключение программы\033[0m"])
         self.tabl.add_row(["Закройся", "\033[31mВыключение программы\033[0m"])
         self.tabl.add_row(["Выключись", "\033[31mВыключение программы\033[0m"])
-        self.tabl.add_row(["Поиск {...}", "\033[31mПоиск в интернете\033[0m"])
-        self.tabl.add_row(["Погода {...}", "\033[31mПоиск погоды\033[0m"])
+        self.tabl.add_row(["Поиск {\033[32m__\033[0m}", "\033[31mПоиск в интернете\033[0m"])
+        self.tabl.add_row(["Погода {\033[32m__\033[0m}", "\033[31mПоиск погоды\033[0m"])
         self.tabl.add_row(["Помощь", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Просвяти", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Объясни", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Покажи", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Музыка", "\033[31mОткрыть музыку\033[0m"])
+        self.tabl.align = "l"
         return self.tabl
 
 
@@ -294,42 +296,38 @@ class Music(Recognition):
             "spotify": "https://open.spotify.com",
             "спотифай": "https://open.spotify.com",
         }
-        print("λ ~ Включение музыки")
+        self.is_vk, self.is_spotify = False, False
         self.path_to_spotify = f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming\\Spotify\\Spotify.exe"
         self.path_to_vk = f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming\\VK\\vk.exe"
-        self.check_programs()
-        if (self.spotify_en == True) and (self.vk_en == True):
-            self.two_programs()
-        elif self.spotify_en == True:
-            self.open_spotify()
-        elif self.vk_en == True:
-            self.open_vk_music()
+        self.main()
+
+    def open_programs(self):
+        if (self.is_spotify == True) and (self.is_vk == True):
+            with sr.Microphone() as self.mic:
+                self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
+                print("Какую программу открыть? <vk, spotify>")
+                while True:
+                    try:
+                        self.choice_prog = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
+                        if (self.choice_prog == "вк") or (self.choice_prog == "vk"):
+                            self.open_vk_music()
+                        else:
+                            self.open_spotify()
+                    except:
+                        pass
+                    
+        elif self.is_spotify == True:
+            self.engine.say("открываю спотифай")
+            self.engine.runAndWait()
+            os.startfile(self.path_to_spotify)
+
+        elif self.is_vk == True:
+            self.engine.say("открываю вконтакте музыка")
+            self.engine.runAndWait()
+            os.startfile(self.path_to_vk)
+
         else:
             self.open_sites()
-
-    def open_spotify(self):
-        self.engine.say("открываю спотифай")
-        self.engine.runAndWait()
-        os.system(f"start {self.path_to_spotify}")
-        
-    def open_vk_music(self):
-        self.engine.say("открываю вконтакте музыка")
-        self.engine.runAndWait()
-        os.system(f"start {self.path_to_vk}")
-
-    def two_programs(self):
-        with sr.Microphone() as self.mic:
-            self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
-            print("Какую программу открыть? <vk, spotify>")
-            while True:
-                try:
-                    self.choice_prog = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
-                    if (self.choice_prog == "вк") or (self.choice_prog == "vk"):
-                        self.open_vk_music()
-                    else:
-                        self.open_spotify()
-                except:
-                    pass
 
     def open_sites(self):
         with sr.Microphone() as self.mic:
@@ -347,19 +345,34 @@ class Music(Recognition):
     def check_programs(self):
         print(">>> Начинаю поиск программ...")
         for i in os.listdir(f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming"):
-            if "Spotify" in i:
-                self.spotify_en = True
-                print(">>> \033[32mНайдена программа Spotify\033[0m")
-            elif "VK" in i:
-                self.vk_en = True
-        if self.vk_en == True:
+            if i == "Spotify":
+                self.is_spotify = True
+            elif i == "VK":
+                self.is_vk = True
+            else:
+                pass
+    
+    def print_out(self):
+        if self.is_spotify:
+            print(">>> \033[32mНайдена программа Spotify\033[0m")
+        else:
+            print(">>> \033[31mНе найдена программа Spotify\033[0m")
+        if self.is_vk:
             print(">>> \033[32mНайдена программа Vk\033[0m")
-        if self.spotify_en == False and self.vk_en == False:
-            print(">>> \033[31m Не найдено программ для включения музыки\033[0m")
-        print()
+        else:
+            print(">>> \033[31mНе найдена программа Vk\033[0m")
+
+    def main(self):
+        print("λ ~ Включение музыки")
+        self.check_programs()
+        self.print_out()
+        self.open_programs()
+        return True
 
 
 
 if __name__ == '__main__':
+    '''
     keyboard.add_hotkey("Ctrl+Shift+F", Assistent)
-    keyboard.wait()
+    keyboard.wait()'''
+    Music()

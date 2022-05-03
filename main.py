@@ -1,35 +1,40 @@
-from time import sleep
-from pymorphy2 import MorphAnalyzer
-from prettytable import PrettyTable
-import speech_recognition as sr
-import webbrowser
-from pyowm import OWM
-from pyowm.utils.config import get_default_config
-import os
-import pyttsx3
+from os import system, getlogin, name, getcwd, listdir, path
+from webbrowser import open_new
 from datetime import datetime
-import keyboard
-import winapps
-if os.name == 'nt':
-    from winotify import Notification
+from difflib import SequenceMatcher
+from subprocess import run
+
+try:
+    import keyboard
+    import pyttsx3
+    from speech_recognition import Recognizer, Microphone
+    from prettytable import PrettyTable
+    from pymorphy2 import MorphAnalyzer
+    from pyowm import OWM
+    from pyowm.utils.config import get_default_config
+    if name == 'nt':
+        from winotify import Notification
+except ImportError:
+    system("pip install -r requirements.txt")
 
 
 class Recognition():
     def __init__(self):
-        self.root = sr.Recognizer()
-        self.root.pause_threshold = 0.5
+        self.token_OWM = "1f7d88e16e1906ce2a0ce4be53b020de"
+        self.root = Recognizer()
+        self.root.pause_threshold = 0.1
         self.engine = pyttsx3.init()
         rate = self.engine.getProperty('rate')
         self.engine.setProperty('rate', rate-20)
         self.engine.runAndWait()
-        if os.name == 'nt':
+        if name == 'nt':
             self.is_windows = True
 
     def clear(self):
         if self.is_windows:
-            os.system('cls')
+            system('cls')
         else:
-            os.system('clear')
+            system('clear')
 
 
 class Assistent(Recognition):
@@ -39,98 +44,46 @@ class Assistent(Recognition):
         self.engine.runAndWait()
         self.clear()
         self.commands = {
-            "выключись": "Stop",
-            "выключение": "Stop",
-            "закройся": "Stop",
+            ("выключись", "выключение", "закройся", "пока", "удачи"): "Stop",
             "поиск": "Search_Browser",
-            "поиск в интернете": "Search_Browser",
             "погода": "Search_Weather",
-            "помощь": "Help",
-            "просвяти": "Help",
-            "объясни": "Help",
-            "покажи": "Help",
-            "сос": "Help",
-            "музыка": "Music"
+            ("помощь", "просвяти", "объясни", "покажи", "сос"): "Help",
+            "музыка": "Music",
+            "список": "Printing_Programs",
+            ("открой", "приложения"): "Start_Program",
+            "браузер": "Open_Browser",
+            "интернет": "Open_Browser",
         }
-        
-        self.commands_list = self.commands.keys()
         self.command_runner()
 
     def command_runner(self):
         while True:
             try:
-                with sr.Microphone() as self.mic:
+                with Microphone() as self.mic:
                     self.root.adjust_for_ambient_noise(
                         source=self.mic, duration=1)
                     self.text = self.root.recognize_google(
                         audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
-                    if self.text in self.commands_list:
-                        self.handler(self.text)
-                    elif "погода" in self.text:
-                        self.handler(self.text, is_weather=True)
-                    elif "поиск" in self.text:
-                        self.handler(self.text, is_search=True)
+                    for i in self.commands.keys():
+                        if "браузер" in i:
+                            globals()[self.commands.get(self.text.split(" ")[0])](
+                                arr=self.text.split(" "))
+                        '''except:
+                            print("Fail 443...")
+                            exit()'''
                 break
             except:
                 pass
-
-    def handler(self, message, is_weather=False, is_search=False):
-        if is_weather:
-            if " в " in message:
-                checker = MorphAnalyzer()
-                spliting = message.split(" в ")
-                word = checker.parse(spliting[1])[0]
-                self.city = word.normal_form
-                print(f"λ ~ Погода {self.city.capitalize()}")
-                self.engine.say(f"погода {self.city}")
-                self.item = self.commands.get(spliting[0])
-                globals()[self.item](self.city)
-
-            else:
-                spliting = message.split(" ")
-                self.city = spliting[1]
-                print(f"λ ~ Погода {self.city.capitalize()}")
-                self.engine.say(f"погода {self.city}")
-                self.item = self.commands.get(spliting[0])
-                globals()[self.item](self.city)
-
-        elif is_search:
-            if " в " in message:
-                checker = MorphAnalyzer()
-                spliting = message.split(" в ")
-                word = checker.parse(spliting[1])[0]
-                self.platform = word.normal_form
-                print(f"λ ~ поиск {self.platform}")
-                self.engine.say(f"поиск {self.platform}")
-                self.item = self.commands.get(spliting[0])
-                globals()[self.item](self.platform)
-
-            else:
-                spliting = message.split(" ")
-                self.platform = spliting[1]
-                print(f"λ ~ поиск {self.platform}")
-                self.engine.say(f"поиск {self.platform}")
-                self.item = self.commands.get(spliting[0])
-                globals()[self.item](self.platform)
-
-        else:
-            print("λ ~ ", message)
-            try:
-                self.item = self.commands.get(message)
-                globals()[self.item]()
-            except:
-                print("Неудача")
-                os.abort()
 
 
 class Stop():
     def __init__(self):
         print("Сам закройся...")
-        os.abort()
+        exit()
 
 
 class Search_Browser(Recognition):
-    def __init__(self, platform=None):
+    def __init__(self, platform=None, arr=[]):
         super(Search_Browser, self).__init__()
         self.yandex = "https://yandex.ru/search/?text="
         self.youtube = "https://youtube.com/results?search_query="
@@ -144,21 +97,21 @@ class Search_Browser(Recognition):
     def search_google(self):
         print(
             f"Произвожу поиск <{self.text_search}> в Google... открываю браузер")
-        webbrowser.open_new(self.google + self.text_search)
+        open_new(self.google + self.text_search)
 
     def search_yandex(self):
         print(
             f"Произвожу поиск <{self.text_search}> в Yandex... открываю браузер")
-        webbrowser.open_new(self.yandex + self.text_search)
+        open_new(self.yandex + self.text_search)
 
     def search_youtube(self):
         print(
             f"Произвожу поиск <{self.text_search}> в Youtube... открываю браузер")
-        webbrowser.open_new(url=self.youtube + self.text_search)
+        open_new(url=self.youtube + self.text_search)
 
     def input_search(self, platform):
         print(f"Запрос ")
-        with sr.Microphone() as self.mic:
+        with Microphone() as self.mic:
             self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
             while True:
                 try:
@@ -175,12 +128,13 @@ class Search_Browser(Recognition):
                     pass
 
     def input_platform(self):
-        with sr.Microphone() as self.mic:
+        with Microphone() as self.mic:
             self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
             print("Где искать?(google, youtube, yandex)")
             while True:
                 try:
-                    self.platform = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
+                    self.platform = self.root.recognize_google(
+                        audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
                     if self.platform in ["google", "yandex", "youtube", "гугл", "яндекс", "ютуб"]:
                         self.input_search(self.platform)
                         break
@@ -188,17 +142,57 @@ class Search_Browser(Recognition):
                     pass
 
 
+class Printing_Programs(Recognition):
+    def __init__(self, arr=[], mode="full"):
+        super(Printing_Programs, self).__init__()
+        self.programs = Find_Programs().programs
+        self.clear()
+        if mode == "low":
+            self.low_mode()
+        else:
+            self.full_mode()
+
+    def low_mode(self):
+        self.clear()
+        print(f"\033[32mНайдено {len(self.programs.values())} программ\033[0m")
+        print("-"*100)
+        count = 0
+        for i in self.programs:
+            if count == 0 or count == 1:
+                print(f"\033[32m{i}\033[0m".ljust(40), end='')
+                count += 1
+            else:
+                print(f"\033[32m{i}\033[0m".ljust(40))
+                count = 0
+
+    def full_mode(self):
+        self.clear()
+        print(f"\033[32mНайдено {len(self.programs.values())} программ\033[0m")
+        print("-"*100)
+        for i in self.programs:
+            print(f"\033[32m{i}\033[0m".ljust(40), end='')
+            print(f"{self.programs[i]}".ljust(40))
+
+
 class Search_Weather(Recognition):
-    def __init__(self, city="суходол"):
+    def __init__(self, city="суходол", arr=["погода"]):
         super(Search_Weather, self).__init__()
         config_dict = get_default_config()
         config_dict['language'] = 'ru'
-        self.owm = OWM('1f7d88e16e1906ce2a0ce4be53b020de', config=config_dict)
+        self.owm = OWM(self.token_OWM, config=config_dict)
         self.manager = self.owm.weather_manager()
-        self.root = sr.Recognizer()
+        self.root = Recognizer()
         self.root.pause_threshold = 0.5
+        if len(arr) > 1:
+            checker = MorphAnalyzer()
+            if "в" in arr:
+                city_old = arr[2]
+            else:
+                city_old = arr[1]
+            word = checker.parse(city_old)[0]
+            city = word.normal_form
         self.now = datetime.now()
-        if self.is_windows:
+        if not self.is_windows:
             self.get_weather_city_windows(city)
         else:
             self.get_weather_city_linux(city)
@@ -218,8 +212,8 @@ class Search_Weather(Recognition):
             self.engine.runAndWait()
 
     def get_weather_city_windows(self, city):
-        self.icon_on = os.getcwd()+'icons/cloud-on.png'
-        self.icon_off = os.getcwd()+'icons/cloud-off.png'
+        self.icon_on = getcwd()+'icons/cloud-on.png'
+        self.icon_off = getcwd()+'icons/cloud-off.png'
         try:
             self.weather_all = self.manager.weather_at_place(city).weather
             self.get_weather_param(self.weather_all)
@@ -255,12 +249,12 @@ class Search_Weather(Recognition):
 
 
 class OpenProgram():
-    def __init__(self):
+    def __init__(self, arr=[]):
         pass
 
 
 class Help(Recognition):
-    def __init__(self):
+    def __init__(self, arr=[]):
         super(Help, self).__init__()
         self.clear()
         self.engine.say("Что непонятного в моих командах?")
@@ -268,26 +262,42 @@ class Help(Recognition):
         self.title = "λ ~ Список команд"
         print(self.title)
         print(self.constructor())
-            
+
     def constructor(self):
         self.tabl = PrettyTable()
-        self.tabl.field_names = ["\033[32mКоманда\033[0m", "\033[32mОписание\033[0m"]
-        self.tabl.add_row(["Выключение", "\033[31mВыключение программы\033[0m"])
+        self.tabl.field_names = [
+            "\033[32mКоманда\033[0m", "\033[32mОписание\033[0m"]
+        self.tabl.add_row(
+            ["Выключение", "\033[31mВыключение программы\033[0m"])
         self.tabl.add_row(["Закройся", "\033[31mВыключение программы\033[0m"])
         self.tabl.add_row(["Выключись", "\033[31mВыключение программы\033[0m"])
-        self.tabl.add_row(["Поиск {\033[32m__\033[0m}", "\033[31mПоиск в интернете\033[0m"])
-        self.tabl.add_row(["Погода {\033[32m__\033[0m}", "\033[31mПоиск погоды\033[0m"])
+        self.tabl.add_row(["Поиск {\033[32m__\033[0m}",
+                          "\033[31mПоиск в интернете\033[0m"])
+        self.tabl.add_row(["Погода {\033[32m__\033[0m}",
+                          "\033[31mПоиск погоды\033[0m"])
         self.tabl.add_row(["Помощь", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Просвяти", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Объясни", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Покажи", "\033[31mПомощь в работе\033[0m"])
         self.tabl.add_row(["Музыка", "\033[31mОткрыть музыку\033[0m"])
+        self.tabl.add_row(["Список программ",
+                          "\033[31mВывести список программ\033[0m"])
+        self.tabl.add_row(["Приложения", "\033[31mОткрыть программу\033[0m"])
+        self.tabl.add_row(["Программы", "\033[31mОткрыть программу\033[0m"])
+        self.tabl.add_row(["Браузер", "\033[31mОткрыть браузер\033[0m"])
+        self.tabl.add_row(["Интернет", "\033[31mОткрыть браузер\033[0m"])
         self.tabl.align = "l"
         return self.tabl
 
 
-class Music(Recognition):
+class Open_Browser():
     def __init__(self):
+        print("λ ~ Oткрываю браузер")
+        open_new(" ")
+
+
+class Music(Recognition):
+    def __init__(self, arr=[]):
         super(Music, self).__init__()
         self.clear()
         self.sites = {
@@ -297,40 +307,41 @@ class Music(Recognition):
             "спотифай": "https://open.spotify.com",
         }
         self.is_vk, self.is_spotify = False, False
-        self.path_to_spotify = f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming\\Spotify\\Spotify.exe"
-        self.path_to_vk = f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming\\VK\\vk.exe"
+        self.path_to_spotify = f"C:\\Users\\{getlogin()}\\AppData\\Roaming\\Spotify\\Spotify.exe"
+        self.path_to_vk = f"C:\\Users\\{getlogin()}\\AppData\\Roaming\\VK\\vk.exe"
         self.main()
 
     def open_programs(self):
         if (self.is_spotify == True) and (self.is_vk == True):
-            with sr.Microphone() as self.mic:
+            with Microphone() as self.mic:
                 self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
-                print("Какую программу открыть? <vk, spotify>")
+                print("Какую программу открыть? <vk, spotify>", end='')
                 while True:
                     try:
-                        self.choice_prog = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
-                        if (self.choice_prog == "вк") or (self.choice_prog == "vk"):
+                        self.choice_prog = self.root.recognize_google(
+                            audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
+                        if ("вк" in self.choice_prog ) or (self.choice_prog == "vk") or ("в к" in self.choice_prog):
                             self.open_vk_music()
                         else:
                             self.open_spotify()
                     except:
                         pass
-                    
+
         elif self.is_spotify == True:
             self.engine.say("открываю спотифай")
             self.engine.runAndWait()
-            os.startfile(self.path_to_spotify)
+            run([self.path_to_spotify])
 
         elif self.is_vk == True:
             self.engine.say("открываю вконтакте музыка")
             self.engine.runAndWait()
-            os.startfile(self.path_to_vk)
+            run([self.path_to_vk])
 
         else:
             self.open_sites()
 
     def open_sites(self):
-        with sr.Microphone() as self.mic:
+        with Microphone() as self.mic:
             self.root.adjust_for_ambient_noise(source=self.mic, duration=1)
             print("Какой сайт открыть? <vk, spotify>")
             while True:
@@ -338,20 +349,20 @@ class Music(Recognition):
                     self.name = self.root.recognize_google(audio_data=self.root.listen(source=self.mic), language='ru-RU').lower()
                     if self.name in self.sites.keys():
                         print(f"λ ~ Открываю сайт <{self.name.capitilize()}>")
-                        webbrowser.open(self.sites[self.name])
+                        open(self.sites[self.name])
                 except:
                     pass
 
     def check_programs(self):
         print(">>> Начинаю поиск программ...")
-        for i in os.listdir(f"C:\\Users\\{os.getlogin()}\\AppData\\Roaming"):
+        for i in listdir(f"C:\\Users\\{getlogin()}\\AppData\\Roaming"):
             if i == "Spotify":
                 self.is_spotify = True
             elif i == "VK":
                 self.is_vk = True
             else:
                 pass
-    
+
     def print_out(self):
         if self.is_spotify:
             print(">>> \033[32mНайдена программа Spotify\033[0m")
@@ -370,9 +381,64 @@ class Music(Recognition):
         return True
 
 
+class Find_Programs():
+    def __init__(self):
+        self.programs = {}
+        self.main()
+
+    def main(self):
+        self.dirs = ["C:\\Program Files\\", f"C:\\Users\\{getlogin()}\\AppData\\Roaming\\", f"C:\\Users\\{getlogin()}\\AppData\\Local\\",
+                     'C:\\Program Files (x86)\\', f"C:\\Users\\{getlogin()}\\AppData\\Local\\Programs\\"]
+        for dir in self.dirs:
+            self.search_progs(dir)
+
+    def search_progs(self, dir, name=None):
+        if name != None:
+            if not path.isfile(dir):
+                try:
+                    for i in listdir(dir+"\\"):
+                        if path.isfile(dir+"\\"+i):
+                            if (i in ["launcher.exe", name.lower()+".exe", name.capitalize()+".exe", name+".exe"]) or (self.similary(name, i.strip(".exe")) > 0.50):
+                                self.programs[name] = dir+"\\"+name+".exe"
+                except PermissionError:
+                    pass
+        else:
+            if ".ini" not in dir:
+                for i in listdir(dir):
+                    self.search_progs(dir+i, i)
+
+    def similary(self, dir, exe):
+        return SequenceMatcher(None, dir.lower(), exe.lower()).ratio()
+
+
+class OpenProgramError(FileNotFoundError):
+    def __init__(self, txt):
+        self.txt = txt
+
+
+class Start_Program(Recognition):
+    def __init__(self, name=''):
+        super(Start_Program, self).__init__()
+        Printing_Programs()
+        self.name = input("λ ~ Введите приложение: ")
+        self.programs = Find_Programs().programs
+        self.start(self.name)
+
+    def start(self, name):
+        for i in self.programs.keys():
+            if name.lower() in i.lower():
+                try:
+                    if run(self.programs[i]).returncode != 0:
+                        assert OpenProgramError(
+                            "λ ~ Ошибка при открытие программы")
+                except OpenProgramError as e:
+                    print(e)
+                except FileNotFoundError as e:
+                    print(e)
+
 
 if __name__ == '__main__':
-    '''
-    keyboard.add_hotkey("Ctrl+Shift+F", Assistent)
+    '''keyboard.add_hotkey("Ctrl+K", Assistent)
     keyboard.wait()'''
-    Music()
+    Search_Weather(city="ташкент")
+    
